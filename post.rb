@@ -1,4 +1,10 @@
+require 'sqlite3'
+require 'date'
+
+
 class Post
+
+  @@AQLITE_DB = 'C:/PHealth/Ruby_learn/nasledovanie/notepad/notepad.db'
 
   def initialize
     @created_at = Time.now
@@ -6,11 +12,11 @@ class Post
   end
 
   def self.post_types
-    [Memo, Task, Link]
+    {'Memo' => Memo,'Task' => Task, 'Link' => Link}
   end
 
-  def self.create(type_index)
-    return post_types[type_index].new
+  def self.create(type)
+    return post_types[type].new
   end  
 
 
@@ -23,6 +29,45 @@ class Post
   def to_strings
     # Этот метод должен быть реализован у каждого ребенка, так как именно они
     # знают как именно хранить перевести себя в массив строк.
+  end
+
+  def self.find(limit, type, id)
+    db = SQLite3::Database.open(@@AQLITE_DB)
+  
+    if !id.nil?
+      db.results_as_hash = true
+      result = db.execute('SELECT * FROM posts WHERE rowid = ?', id)
+      db.close
+  
+      if result.empty?
+        puts "Такой id #{id} не найден в базе :("
+        return nil
+      else
+        result = result[0]
+        post = create(result['type'])
+        post.load_data(result)
+        post
+      end
+    else
+      db.results_as_hash = false
+      query = 'SELECT rowid, * FROM posts '
+      query += 'WHERE type = :type ' unless type.nil?
+      query += 'ORDER by rowid DESC '
+      query += 'LIMIT :limit ' unless limit.nil?
+  
+      statement = db.prepare query
+      statement.bind_param('type', type) unless type.nil?
+      statement.bind_param('limit', limit) unless limit.nil?
+      result = statement.execute!
+      statement.close
+      db.close
+      result
+    end
+  end
+
+  def load_data(data_hash)
+    @created_at = DateTime.parse(data_hash['created_at'])
+    @text = data_hash['text']
   end
 
   
@@ -55,4 +100,38 @@ class Post
     # Склеиваем путь из относительного пути к папке и названия файла
     current_path + '/' + file_name
   end
+
+  def save_to_db
+    db = SQLite3::Database.open(@@AQLITE_DB)
+    db.results_as_hash = true
+
+    db.execute(
+      "INSERT INTO posts (" + 
+      to_db_hash.keys.join(',') + 
+      ")" +
+      " VALUES (" + 
+      ('?,'*to_db_hash.keys.size).chomp(',') + 
+      ") ",
+      to_db_hash.values
+    )
+
+    
+
+    insert_raw_id = db.last_insert_row_id
+    db.close
+    return insert_raw_id
+
+    
+
+  end
+
+  def to_db_hash
+    {
+      'type' => self.class.name,
+      'created_at' => @created_at.to_s
+    }
+  end
+
+
+
 end

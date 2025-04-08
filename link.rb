@@ -19,6 +19,13 @@ class Link < Post
     @text = STDIN.gets.chomp
   end
 
+
+  def to_strings
+    time_string = "Создано: #{@created_at.strftime('%Y.%m.%d, %H:%M:%S')} \n"
+
+    [@url, @text, time_string]
+  end
+
   # Этот метод будет возвращать массив из трех строк: адрес ссылки, описание
   # и дата создания
   def save
@@ -33,4 +40,20 @@ class Link < Post
     puts "Ваша ссылка сохранена"
 
   end
+
+  def to_db_hash
+    return super.merge(
+      {
+        'text' => @text,
+        'url' => @url
+      }
+    )
+  end
+
+  def load_data(data_hash)
+    super
+
+    @url = data_hash['url']
+  end
+
 end
