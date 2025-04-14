@@ -31,38 +31,46 @@ class Post
     # знают как именно хранить перевести себя в массив строк.
   end
 
-  def self.find(limit, type, id)
-    db = SQLite3::Database.open(@@AQLITE_DB)
-  
+  def self.find_id(limit, type, id)
     if !id.nil?
+      db = SQLite3::Database.open(@@AQLITE_DB)
       db.results_as_hash = true
-      result = db.execute('SELECT * FROM posts WHERE rowid = ?', id)
+      
+      result = db.execute('SELECT * FROM posts WHERE rowid = ?', id).first
       db.close
-  
-      if result.empty?
+      
+      if result.nil?
         puts "Такой id #{id} не найден в базе :("
         return nil
       else
-        result = result[0]
         post = create(result['type'])
         post.load_data(result)
         post
       end
     else
-      db.results_as_hash = false
-      query = 'SELECT rowid, * FROM posts '
-      query += 'WHERE type = :type ' unless type.nil?
-      query += 'ORDER by rowid DESC '
-      query += 'LIMIT :limit ' unless limit.nil?
-  
-      statement = db.prepare query
-      statement.bind_param('type', type) unless type.nil?
-      statement.bind_param('limit', limit) unless limit.nil?
-      result = statement.execute!
-      statement.close
-      db.close
-      result
+      find_all(limit, type) # Теперь этот метод точно вернет массив
     end
+  end
+
+  def self.find_all(limit, type)
+    db = SQLite3::Database.open(@@AQLITE_DB)
+    db.results_as_hash = false
+    
+    query = 'SELECT rowid, * FROM posts '
+    query += 'WHERE type = ? ' unless type.nil?
+    query += 'ORDER by rowid DESC '
+    query += 'LIMIT ? ' unless limit.nil?
+  
+    # Подготавливаем параметры для запроса
+    params = []
+    params << type unless type.nil?
+    params << limit.to_i unless limit.nil?
+  
+    # Выполняем запрос и сразу получаем массив результатов
+    result = db.execute(query, *params)
+    
+    db.close
+    result # Возвращаем массив с результатами
   end
 
   def load_data(data_hash)

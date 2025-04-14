@@ -26,9 +26,9 @@ opt.on('--limit NUMBER', 'сколько последних постов пок�
 
 end.parse!
 
-result = Post.find(options[:limit], options[:type], options[:id])
+result = Post.find_id(options[:limit], options[:type], options[:id])
 
-if result.is_a? Post
+  if result.is_a? Post
    
     puts "Запись #{result.class.name}, id = #{options[:id]}"
   
@@ -45,7 +45,7 @@ if result.is_a? Post
     print '| @due_date          '
     print '|'
   
-    
+
     result.each do |row|
      
       puts
